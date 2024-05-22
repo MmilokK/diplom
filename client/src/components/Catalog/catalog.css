@@ -1,0 +1,13 @@
+.catalog {
+    margin-top: 20px;
+    width: 95%;
+}
+.btns {
+    display: flex;
+
+}
+
+.btn_create {
+    margin-left: 10px;
+    
+}

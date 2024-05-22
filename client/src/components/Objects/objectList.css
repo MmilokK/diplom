@@ -1,0 +1,13 @@
+.objectlist{
+    margin: 20px 0;
+    display: flex;
+}
+
+.header{
+    display: grid;
+}
+
+.search{
+    width: 100%;
+    display: flex;
+}

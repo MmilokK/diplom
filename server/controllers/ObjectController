@@ -1,0 +1,351 @@
+const Fund = require('../models/Fund')
+const Collection = require('../models/Collection')
+const Document = require('../models/Document')
+const Section = require("../models/Section")
+const Attachment = require("../models/Attachment")
+
+class ObjectController {
+    async createFund(req, res){
+        
+        try {
+            const {code, name, numOfCollections, numOfDocuments} = req.body
+            const fund = new Fund({code, name, numOfCollections, numOfDocuments, parent_id: req.user.id})
+            await fund.save()
+            return res.json(fund)
+        } catch (error) {
+            console.log(error)
+            return res.status(400).json(error)
+        }
+    }
+
+    async getFund(req, res){
+        try {
+            const funds = await Fund.find({parent_id: req.user.id})
+            return res.json(funds)
+        } catch (error) {
+            console.log(error)
+            return res.status(500).json({message: "Can not get funds"})
+        }
+    }
+
+    async deleteFund(req, res){
+        try {
+            const contr = new ObjectController();
+            await contr.deleteManyCollections(req.params.id)
+
+            await Fund.deleteOne({_id: req.params.id}).then((result) => { 
+                if(!result.acknowledged){
+                    return res.status(400).json({message: 'Fund not found'})
+                } else {
+                    return res.json({message: 'Fund was deleted'})
+                }
+            });
+        } catch (error) {
+            console.log(error)
+            return res.status(400).json({message: 'Can not delete'})
+        }
+    }
+
+    async updateFund(req, res){
+        try {
+            const {code, name, numOfCollections, numOfDocuments} = req.body
+            await Fund.updateOne({_id:req.params.id}, {code, name, numOfCollections, numOfDocuments}).then((result) => { 
+                if(!result.acknowledged){
+                    return res.status(400).json({message: 'Fund not found'})
+                } else {
+                    return res.json({message: 'Fund was updated'})
+                }
+            });
+        } catch (error) {
+            console.log(error)
+            return res.status(400).json({message: 'Can not update'})
+        }
+    }
+
+    async createCollection(req, res){
+        try {
+            const {code, type, description, name, numOfDocuments, numOfPages, parent_id} = req.body
+            const collection = new Collection({code, type, description, name, numOfDocuments, numOfPages, parent_id, user_id: req.user.id})
+            
+            await collection.save()
+            return res.json(collection)
+            
+        } catch (error) {
+            console.log(error)
+            return res.status(400).json(error)
+        }
+    }
+
+    async getCollection(req, res){
+        try {
+            const collections = await Collection.find({user_id: req.user.id})
+            return res.json(collections)
+        } catch (error) {
+            console.log(error)
+            return res.status(500).json({message: "Can not get collections"})
+        }
+    }
+
+    async deleteCollection(req, res){
+        try {
+            const contr = new ObjectController();
+            await contr.deleteManyDocuments(req.params.id)
+            
+            
+            await Collection.deleteOne({_id: req.params.id}).then((result) => { 
+                if(!result.acknowledged){
+                    return res.status(400).json({message: 'Collection not found'})
+                } else {
+                    return res.json({message: 'Collection was deleted'})
+                }
+            });
+        } catch (error) {
+            console.log(error)
+            return res.status(400).json({message: 'Can not delete'})
+        }
+    }
+
+    async deleteManyCollections(fundId){
+        try {
+            const contr = new ObjectController();
+            const collections = await Collection.find({parent_id: fundId})
+            console.log(collections)
+            if(collections){
+                 collections.forEach((col)=>{
+                    contr.deleteManyDocuments(col._id)
+                })
+            }
+            await Collection.deleteMany({parent_id: fundId})
+            return
+        } catch (error) {
+            console.log(error)
+            return res.status(400).json({message: 'Can not delete'})
+        }
+    }
+
+    async updateCollection(req, res){
+        try {
+            const {code, type, description, name, numOfDocuments, numOfPages} = req.body
+            await Collection.updateOne({_id:req.params.id}, {code, type, description, name, numOfDocuments, numOfPages}).then((result) => { 
+                if(!result.acknowledged){
+                    return res.status(400).json({message: 'Collection not found'})
+                } else {
+                    return res.json({message: 'Colection was updated'})
+                }
+            });
+        } catch (error) {
+            console.log(error)
+            return res.status(400).json({message: 'Can not update'})
+        }
+    }
+
+    async createDocument(req, res){
+        try {
+            const {code, description, name, numOfPages, numOfAttachments, numOfSections, parent_id} = req.body
+            const document = new Document({code, description, name, numOfPages, numOfAttachments, numOfSections, parent_id, user_id: req.user.id})
+            
+            await document.save()
+            return res.json(document)
+            
+        } catch (error) {
+            console.log(error)
+            return res.status(400).json(error)
+        }
+    }
+
+    async getDocument(req, res){
+        try {
+            const documents = await Document.find({user_id: req.user.id})
+            return res.json(documents)
+        } catch (error) {
+            console.log(error)
+            return res.status(500).json({message: "Can not get documents"})
+        }
+    }
+
+    async deleteDocument(req, res){
+        try {
+            const contr = new ObjectController();
+
+            await contr.deleteManyAttachments(req.params.id)
+            await contr.deleteManySections(req.params.id)
+           
+            await Document.deleteOne({_id: req.params.id}).then((result) => { 
+                if(!result.acknowledged){
+                    return res.status(400).json({message: 'Document not found'})
+                } else {
+                    return res.json({message: 'Document was deleted'})
+                }
+            });
+        } catch (error) {
+            console.log(error)
+            return res.status(400).json({message: 'Can not delete'})
+        }
+    }
+
+    async deleteManyDocuments(collectionId){
+        try {
+            const contr = new ObjectController();
+            const documents = await Document.find({parent_id: collectionId})
+            if(documents){
+                 documents.forEach((doc)=>{
+                    contr.deleteManyAttachments(doc._id)
+                    contr.deleteManySections(doc._id)
+                })
+            }
+            await Document.deleteMany({parent_id: collectionId})
+            return
+        } catch (error) {
+            console.log(error)
+            return res.status(400).json({message: 'Can not delete'})
+        }
+    }
+
+    async updateDocument(req, res){
+        try {
+            const {code, description, name, numOfPages, numOfAttachments, numOfSections} = req.body
+            await Document.updateOne({_id:req.params.id}, {code, description, name, numOfPages, numOfAttachments, numOfSections}).then((result) => { 
+                if(!result.acknowledged){
+                    return res.status(400).json({message: 'Document not found'})
+                } else {
+                    return res.json({message: 'Document was updated'})
+                }
+            });
+        } catch (error) {
+            console.log(error)
+            return res.status(400).json({message: 'Can not update'})
+        }
+    }
+
+    async createSection(req, res){
+        try {
+            const {code, description, name, numOfPages, parent_id} = req.body
+            const section = new Section({code, description, name, numOfPages, parent_id, user_id: req.user.id})
+            
+            await section.save()
+            return res.json(section)
+            
+        } catch (error) {
+            console.log(error)
+            return res.status(400).json(error)
+        }
+    }
+
+    async getSection(req, res){
+        try {
+            const sections = await Section.find({user_id: req.user.id})
+            return res.json(sections)
+        } catch (error) {
+            console.log(error)
+            return res.status(500).json({message: "Can not get sections"})
+        }
+    }
+
+    async deleteSection(req, res){
+        try {
+            await Section.deleteOne({_id: req.params.id}).then((result) => { 
+                if(!result.acknowledged){
+                    return res.status(400).json({message: 'Section not found'})
+                } else {
+                    return res.json({message: 'Section was deleted'})
+                }
+            });
+        } catch (error) {
+            console.log(error)
+            return res.status(400).json({message: 'Can not delete'})
+        }
+    }
+
+    async deleteManySections(parent_id){
+        try {
+            await Section.deleteMany({parent_id: parent_id})
+            return
+        } catch (error) {
+            return
+        }
+        
+    }
+
+    async updateSection(req, res){
+        try {
+            const {code, description, name, numOfPages} = req.body
+            await Section.updateOne({_id:req.params.id}, {code, description, name, numOfPages}).then((result) => { 
+                if(!result.acknowledged){
+                    return res.status(400).json({message: 'Section not found'})
+                } else {
+                    return res.json({message: 'Section was updated'})
+                }
+            });
+        } catch (error) {
+            console.log(error)
+            return res.status(400).json({message: 'Can not update'})
+        }
+    }
+
+    async createAttachment(req, res){
+        try {
+            const {code, description, name, parent_id} = req.body
+            const attachment = new Attachment({code, description, name, parent_id, user_id: req.user.id})
+           
+            await attachment.save()
+            return res.json(attachment)
+            
+        } catch (error) {
+            console.log(error)
+            return res.status(400).json(error)
+        }
+    }
+
+    async getAttachment(req, res){
+        try {
+            const attachments = await Attachment.find({user_id: req.user.id})
+            return res.json(attachments)
+        } catch (error) {
+            console.log(error)
+            return res.status(500).json({message: "Can not get attachments"})
+        }
+    }
+
+    async deleteAttachment(req, res){
+        try {
+            await Attachment.deleteOne({_id: req.params.id}).then((result) => { 
+                if(!result.acknowledged){
+                    return res.status(400).json({message: 'Attachment not found'})
+                } else {
+                    return res.json({message: 'Attachment was deleted'})
+                }
+            });
+        } catch (error) {
+            console.log(error)
+            return res.status(400).json({message: 'Can not delete'})
+        }
+    }
+
+    async deleteManyAttachments(parent_id){
+        try {
+            await Attachment.deleteMany({parent_id: parent_id})
+            return
+        } catch (error) {
+            return
+        }
+        
+    }
+
+    async updateAttachment(req, res){
+        try {
+            const {code, description, name} = req.body
+            await Attachment.updateOne({_id:req.params.id}, {code, description, name}).then((result) => { 
+                if(!result.acknowledged){
+                    return res.status(400).json({message: 'Attachment not found'})
+                } else {
+                    return res.json({message: 'Attachment was updated'})
+                }
+            });
+        } catch (error) {
+            console.log(error)
+            return res.status(400).json({message: 'Can not update'})
+        }
+    }
+}
+
+module.exports = new ObjectController()
